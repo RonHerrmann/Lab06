@@ -19,6 +19,8 @@
  * Parameter
  */
 
+#define pi 3.14159265
+
 #define X 0
 #define Y 1
 #define x_Axis 0
@@ -30,9 +32,12 @@
 
 #define getErr(Soll, positionClean) (Soll - positionClean)
 #define getPR3(sampleRate) ((float) 12.8e6 * 1/sampleRate / 256)
+#define getTime(counter) ((float) counter * 10 / 1000)
+#define getOmega(frequency) ((float) 2 * pi * frequency)
+
 
 #define radius 100
-#define speed  50 // Hz
+#define speed  20 // Hz
 #define centerX 350
 #define centerY 350
 
@@ -52,11 +57,16 @@
  */
 
 uint8_t volatile dimension = 0;
+uint16_t volatile counter = 0;
 uint16_t volatile iInterrupt = 0;
-uint16_t volatile iInterrupt1 = 1;
+uint16_t volatile InterruptDeadline = 0;
+uint16_t volatile deadline = 0;
 uint8_t volatile flagTouch = 0;
 uint8_t volatile flagServo = 0;
 uint8_t volatile flagCircle = 0;
+
+uint16_t volatile setPointX = 0;
+uint16_t volatile setPointY = 0;
 
 //uint16_t volatile x_positionClean;
 //uint16_t volatile y_positionClean;
@@ -115,8 +125,8 @@ void initialize_timer(){
  * PD Controller
  */
 
-#define Kp 0.001
-#define Kd 0 //0.000005
+#define Kp 0.0008
+#define Kd 0.07
 
 
 void PD_Conctroller_Axis(int16_t err, int16_t errPrevious, uint8_t servo){
@@ -124,21 +134,21 @@ void PD_Conctroller_Axis(int16_t err, int16_t errPrevious, uint8_t servo){
     float dutyCycle = 0;
     
     if(servo == X){
-      dutyCycle = (float)((Kp * err + Kd * (err - errPrevious)/0.02) + 1.5);
+      dutyCycle = (float)((Kp * err + Kd * (err - errPrevious)/0.02) + 1.64);
       
-            if (dutyCycle >= 2.1){    //implement the allowed Range for manipulation of the servo.
-                dutyCycle = 2.1;
-            }else if(dutyCycle<= 0.9){
-                dutyCycle = 0.9;
+            if (dutyCycle >= 2.24){    //implement the allowed Range for manipulation of the servo.
+                dutyCycle = 2.24;
+            }else if(dutyCycle<= 1.04){
+                dutyCycle = 1.04;
             }
     }
     else if(servo == Y){
-            dutyCycle = (float)((Kp * err + Kd * (err - errPrevious)/0.02) + 1.5);
+            dutyCycle = (float)((Kp * err + Kd * (err - errPrevious)/0.02) + 1.44);
             
-            if (dutyCycle >= 2.1){    //implement the allowed Range for manipulation of the servo.
-                dutyCycle = 2.1;
-            }else if(dutyCycle<= 0.9){
-                dutyCycle = 0.9;
+            if (dutyCycle >= 2.04){    //implement the allowed Range for manipulation of the servo.
+                dutyCycle = 2.04;
+            }else if(dutyCycle<= 0.84){
+                dutyCycle = 0.84;
             }
     }
     
@@ -151,12 +161,24 @@ void PD_Conctroller_Axis(int16_t err, int16_t errPrevious, uint8_t servo){
 }
 
 
-//void generateCircle(){
-//    
-////    setPointX = centerX - radius;
-////    setPointY = 
-//    
-//}
+void generateCircle(){
+    
+    float store =  0;
+    float currentTime = 0;
+    
+    currentTime = getTime(counter);
+    
+    setPointX = (uint16_t) (centerX + radius * sinf(getOmega(speed) * currentTime));
+    
+    store = getOmega(speed) * currentTime;
+    
+    lcd_locate(0, 3);
+    lcd_printf("Omega = %f", store);
+    
+    setPointY = (uint16_t) (centerY + radius * sinf(getOmega(speed) * getTime(counter)));
+    
+    
+}
 
 
 
@@ -189,21 +211,18 @@ void __attribute__((__interrupt__, __shadow__, __auto_psv__)) _T1Interrupt(void)
 {   
     //TOGGLELED(LED1_PORT);
     
+    if(InterruptDeadline == 1){  
+        deadline++;  
+    }
+    
     flagTouch =1;   // 100 Hz
     
-    if(iInterrupt == 1){  // 50 Hz
+    if(iInterrupt == 100){  // 50 Hz
       flagServo = 1; 
       iInterrupt = 0;  
     }
     
-//    if(iInterrupt1 == 4){  // speed for circle Hz 1/speed/0.01
-//      flagCircle = 1; 
-//      iInterrupt1 = 0;  
-//    }
-//    
-//    
-//    iInterrupt1 ++;
-    
+    counter++;  // 10 ms
     
     IFS0bits.T1IF = 0;      // clear interrupt service routine flag
 }
@@ -245,13 +264,17 @@ void main_loop()
     // initialize servos
     servo_initialization(X);
     servo_initialization(Y);
-    __delay_ms(1000);
+   //__delay_ms(1000);
     
     
     while(TRUE) {
         
+//        lcd_locate(0, 3);
+//        lcd_printf("Counter = %3u", counter)
+        
         if(flagTouch == 1){     // 100Hz
             
+            InterruptDeadline = 1;
             iInterrupt ++;
             
             switch(dimension) {
@@ -277,35 +300,36 @@ void main_loop()
                         dimension = 0; break;
 
                 }
+            InterruptDeadline = 0;
             flagTouch = 0;
         } 
         
          if(flagServo == 1){  //50 Hz
              
-             errX = getErr(350, x_positionClean);
+             generateCircle();
+              
+             errX = getErr(setPointX, x_positionClean); // errX = getErr(350, x_positionClean);
+//             lcd_locate(0, 6);
+//             lcd_printf("ErrX = %03d", errX);
              lcd_locate(0, 6);
-             lcd_printf("ErrX = %03d", errX);
+             lcd_printf("X_circle = %03d", setPointX);
              
              PD_Conctroller_Axis(errX, errXPrevious, X);
              
-             errY = getErr(350, y_positionClean);
+             errY = getErr(setPointY, y_positionClean); //errY = getErr(350, y_positionClean);
+//             lcd_locate(0, 7);
+//             lcd_printf("ErrY = %03d", errY);
              lcd_locate(0, 7);
-             lcd_printf("ErrY = %03d", errY);
+             lcd_printf("Y_circle = %03d", setPointY);
              
              PD_Conctroller_Axis(errY, errYPrevious, Y);
 
-             
+            
             flagServo = 0;
          }
         
-        if(flagCircle == 1){  // Speed
-             
-             
-
-             
-            flagCircle = 0;
-         }
-        
+//        lcd_locate(0, 3);
+//        lcd_printf("Deadline misses = %3u", deadline)
         
         } 
         
