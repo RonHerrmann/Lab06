@@ -31,6 +31,11 @@
 #define getErr(Soll, positionClean) (Soll - positionClean)
 #define getPR3(sampleRate) ((float) 12.8e6 * 1/sampleRate / 256)
 
+#define radius 100
+#define speed  50 // Hz
+#define centerX 350
+#define centerY 350
+
 
 /*
  * Common Definitions
@@ -48,21 +53,24 @@
 
 uint8_t volatile dimension = 0;
 uint16_t volatile iInterrupt = 0;
+uint16_t volatile iInterrupt1 = 1;
 uint8_t volatile flagTouch = 0;
 uint8_t volatile flagServo = 0;
-uint16_t volatile x_positionClean;
-uint16_t volatile y_positionClean;
-uint16_t volatile x_position = 0;
-uint16_t volatile y_position = 0;
-uint16_t volatile x_positionPrevious = 0;
-uint16_t volatile y_positionPrevious = 0;
-uint16_t volatile x_positionPreviousClean = 0;
-uint16_t volatile y_positionPreviousClean = 0;
+uint8_t volatile flagCircle = 0;
 
-int16_t volatile errX = 0;
-int16_t volatile errXPrevious = 0;
-int16_t volatile errY = 0;
-int16_t volatile errYPrevious = 0;
+//uint16_t volatile x_positionClean;
+//uint16_t volatile y_positionClean;
+//uint16_t volatile x_position = 0;
+//uint16_t volatile y_position = 0;
+//uint16_t volatile x_positionPrevious = 0;
+//uint16_t volatile y_positionPrevious = 0;
+//uint16_t volatile x_positionPreviousClean = 0;
+//uint16_t volatile y_positionPreviousClean = 0;
+
+//int16_t volatile errX = 0;
+//int16_t volatile errXPrevious = 0;
+//int16_t volatile errY = 0;
+//int16_t volatile errYPrevious = 0;
 
 
 /*
@@ -107,22 +115,48 @@ void initialize_timer(){
  * PD Controller
  */
 
-#define Kp 0.1
-#define Kd 0.01
+#define Kp 0.001
+#define Kd 0 //0.000005
 
 
-void PD_Conctroller_Axis(uint16_t err, uint16_t errPrevious, uint8_t servo){
+void PD_Conctroller_Axis(int16_t err, int16_t errPrevious, uint8_t servo){
     
     float dutyCycle = 0;
     
-    dutyCycle = (float)((Kp * err + Kd * (errY - errPrevious)/0.02) + 1.5);
+    if(servo == X){
+      dutyCycle = (float)((Kp * err + Kd * (err - errPrevious)/0.02) + 1.5);
+      
+            if (dutyCycle >= 2.1){    //implement the allowed Range for manipulation of the servo.
+                dutyCycle = 2.1;
+            }else if(dutyCycle<= 0.9){
+                dutyCycle = 0.9;
+            }
+    }
+    else if(servo == Y){
+            dutyCycle = (float)((Kp * err + Kd * (err - errPrevious)/0.02) + 1.5);
+            
+            if (dutyCycle >= 2.1){    //implement the allowed Range for manipulation of the servo.
+                dutyCycle = 2.1;
+            }else if(dutyCycle<= 0.9){
+                dutyCycle = 0.9;
+            }
+    }
     
+   
     lcd_locate(0, 5);
     lcd_printf("DutyCycle = %3.2f", dutyCycle);
     
     set_dutyCycle(servo, dutyCycle);
     
 }
+
+
+//void generateCircle(){
+//    
+////    setPointX = centerX - radius;
+////    setPointY = 
+//    
+//}
 
 
 
@@ -135,16 +169,13 @@ void PD_Conctroller_Axis(uint16_t err, uint16_t errPrevious, uint8_t servo){
 #define a1 1
 #define a2 -0.6796
 
-void ButterworthFilter(){
+uint16_t ButterworthFilter(uint16_t position, uint16_t positionPrevious, uint16_t positionPreviousClean){
     
-    if(dimension == 0){  // x-Dimension
-      x_positionPreviousClean = x_positionClean;  
-      x_positionClean = b1 * x_position + b2 * x_positionPrevious - a2 * x_positionPreviousClean;
-    }
-    else if(dimension == 1){  // y-Dimension
-      y_positionPreviousClean = y_positionClean;
-      y_positionClean = b1 * y_position + b2 * y_positionPrevious - a2 * y_positionPreviousClean;
-    }   
+    uint16_t positionClean;
+     
+    positionClean = b1 * position + b2 * positionPrevious - a2 * positionPreviousClean;
+    
+    return positionClean;
 }
 
 
@@ -156,16 +187,24 @@ void ButterworthFilter(){
 
 void __attribute__((__interrupt__, __shadow__, __auto_psv__)) _T1Interrupt(void)   // read  the touchscreen X and Y dimension (read either X or Y and than alternate between them)
 {   
-    TOGGLELED(LED1_PORT);
+    //TOGGLELED(LED1_PORT);
     
-    flagTouch =1;
+    flagTouch =1;   // 100 Hz
     
-    if(iInterrupt == 1){
+    if(iInterrupt == 1){  // 50 Hz
       flagServo = 1; 
       iInterrupt = 0;  
     }
     
-    iInterrupt ++;
+//    if(iInterrupt1 == 4){  // speed for circle Hz 1/speed/0.01
+//      flagCircle = 1; 
+//      iInterrupt1 = 0;  
+//    }
+//    
+//    
+//    iInterrupt1 ++;
+    
+    
     IFS0bits.T1IF = 0;      // clear interrupt service routine flag
 }
 
@@ -182,6 +221,21 @@ void main_loop()
     lcd_printf("Group2: Boyang & Ron");
     lcd_locate(0, 2);
     
+    uint16_t  x_positionClean;
+    uint16_t  y_positionClean;
+    uint16_t  x_position = 0;
+    uint16_t  y_position = 0;
+    uint16_t  x_positionPrevious = 0;
+    uint16_t  y_positionPrevious = 0;
+    uint16_t  x_positionPreviousClean = 0;
+    uint16_t  y_positionPreviousClean = 0;
+    
+    int16_t  errX = 0;
+    int16_t  errXPrevious = 0;
+    int16_t  errY = 0;
+    int16_t  errYPrevious = 0;
+    
+    
    // initialize timers
     initialize_timer();
     
@@ -191,30 +245,35 @@ void main_loop()
     // initialize servos
     servo_initialization(X);
     servo_initialization(Y);
-    //__delay_ms(2000);
+    __delay_ms(1000);
     
     
     while(TRUE) {
         
         if(flagTouch == 1){     // 100Hz
+            
+            iInterrupt ++;
+            
             switch(dimension) {
                 case 0: changeDimension_touchscreen(X);
                         x_positionPrevious = x_position;
                         x_position = currentBallPosition();
 //                        lcd_locate(0, 3);
 //                        lcd_printf("X gemessen = %3u", x_position)
-                        ButterworthFilter();
-                        lcd_locate(0, 3);
-                        lcd_printf("X = %3u", x_positionClean); 
+                        x_positionClean = ButterworthFilter(x_position, x_positionPrevious, x_positionPreviousClean);
+                        x_positionPreviousClean = x_positionClean;
+//                        lcd_locate(0, 5);
+//                        lcd_printf("X = %3u", x_positionClean); 
                         dimension = 1; break;
                 case 1: changeDimension_touchscreen(Y);
                         y_positionPrevious = y_position;
                         y_position = currentBallPosition();
-//                        lcd_locate(0, 6);
+//                        lcd_locate(0, 4);
 //                        lcd_printf("Y gemessen = %3u", y_position)
-                        ButterworthFilter();
-                        lcd_locate(0, 4);
-                        lcd_printf("Y = %3u", y_positionClean);
+                        y_positionClean = ButterworthFilter(y_position, y_positionPrevious, y_positionPreviousClean);
+                        y_positionPreviousClean = y_positionClean;
+//                        lcd_locate(0, 6);
+//                        lcd_printf("Y = %3u", y_positionClean);
                         dimension = 0; break;
 
                 }
@@ -225,19 +284,28 @@ void main_loop()
              
              errX = getErr(350, x_positionClean);
              lcd_locate(0, 6);
-             lcd_printf("ErrX = %04d", errX);
+             lcd_printf("ErrX = %03d", errX);
              
              PD_Conctroller_Axis(errX, errXPrevious, X);
              
              errY = getErr(350, y_positionClean);
              lcd_locate(0, 7);
-             lcd_printf("ErrY = %04d", errY);
+             lcd_printf("ErrY = %03d", errY);
              
              PD_Conctroller_Axis(errY, errYPrevious, Y);
 
              
             flagServo = 0;
          }
+        
+        if(flagCircle == 1){  // Speed
+             
+             
+
+             
+            flagCircle = 0;
+         }
+        
         
         } 
         
