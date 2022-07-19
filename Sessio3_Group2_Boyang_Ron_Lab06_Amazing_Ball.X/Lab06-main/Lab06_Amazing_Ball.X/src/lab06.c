@@ -33,7 +33,7 @@
 #define getOmega(frequency) ((float) 2 * pi * frequency)
 
 
-#define radius 100
+#define radius 50
 #define speed  1 // Hz
 #define centerX 500
 #define centerY 295
@@ -113,8 +113,8 @@ void initialize_timer(){
  * PD Controller
  */
 
-#define Kp 0.0845
-#define Kd 0.0735
+#define Kp 0.261     //0.0845
+#define Kd 0.0735   //0.0735
 
 //#define setPointServoX 1.64
 //#define setPointServoY 1.44
@@ -136,7 +136,8 @@ void __attribute__((__interrupt__, __shadow__, __auto_psv__)) _T1Interrupt(void)
     //TOGGLELED(LED1_PORT);
     
     if(InterruptDeadline == 1){  
-        deadline++;  
+        deadline++;
+        InterruptDeadline = 0;
     }
     
     flagTouch =1;   // 100 Hz
@@ -198,6 +199,9 @@ void main_loop()
         
 //        lcd_locate(0, 3);
 //        lcd_printf("Counter = %3u", counter)
+        lcd_locate(0, 7);
+        lcd_printf("Deadline misses = %3u", deadline);
+        
         
         if(flagTouch == 1){     // 100Hz
             
@@ -237,8 +241,8 @@ void main_loop()
 //            lcd_locate(0, 5);
 //            lcd_printf("X = %3u", x_positionClean); 
             errXPrevious = errX;
-//            errX = getErr(setPointX, x_positionClean); 
-            errX = getErr(500, x_positionClean); 	// setPoint middle X
+            errX = getErr(setPointX, x_positionClean); 
+//            errX = getErr(500, x_positionClean); 	// setPoint middle X
 //            lcd_locate(0, 6);
 //            lcd_printf("ErrX = %3i", errX);
 //             lcd_locate(0, 6);
@@ -266,8 +270,8 @@ void main_loop()
 //            lcd_locate(0, 6);
 //            lcd_printf("Y = %3u", y_positionClean);
             errYPrevious = errY;
-//            errY = getErr(setPointY, y_positionClean); 
-            errY = getErr(295, y_positionClean); // set Point middle y     	
+            errY = getErr(setPointY, y_positionClean); 
+//            errY = getErr(295, y_positionClean); // set Point middle y     	
 //            lcd_locate(0, 7);
 //            lcd_printf("ErrY = %3i", errY);
 //            lcd_locate(0, 7);
@@ -289,13 +293,10 @@ void main_loop()
             set_dutyCycle(Y, dutyCycle);
 
             
-             flagServo = 0;
+            flagServo = 0;
          }
         
-        lcd_locate(0, 3);
-        lcd_printf("Deadline misses = %3u", deadline)
-        
-        } 
+    } 
         
 }
 
