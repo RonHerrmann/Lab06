@@ -33,7 +33,7 @@
 #define getOmega(frequency) ((float) 2 * pi * frequency)
 
 
-#define radius 50
+#define radius 100
 #define speed  1 // Hz
 #define centerX 500
 #define centerY 295
@@ -113,7 +113,7 @@ void initialize_timer(){
  * PD Controller
  */
 
-#define Kp 0.261     //0.0845
+#define Kp 0.105   //0.261     //0.0845
 #define Kd 0.0735   //0.0735
 
 //#define setPointServoX 1.64
@@ -192,7 +192,7 @@ void main_loop()
     // initialize servos
     servo_initialization(X);
     servo_initialization(Y);
-   //__delay_ms(500);
+   __delay_ms(2000);
     
     
     while(TRUE) {
@@ -299,5 +299,3 @@ void main_loop()
     } 
         
 }
-
-
