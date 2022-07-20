@@ -35,8 +35,8 @@
 
 #define radius 100
 #define speed  1 // Hz
-#define centerX 500
-#define centerY 295
+#define centerX 450
+#define centerY 350
 
 
 /*
@@ -113,14 +113,14 @@ void initialize_timer(){
  * PD Controller
  */
 
-#define Kp 0.105   //0.261     //0.0845
+#define Kp 0.095   //0.261     //0.0845
 #define Kd 0.0735   //0.0735
 
 //#define setPointServoX 1.64
 //#define setPointServoY 1.44
 
-#define setPointServoX 3685
-#define setPointServoY 3712
+#define setPointServoX 3680
+#define setPointServoY 3717
 
 #define dutyCycle(errLocal, errPreviousLocal, setPoint) (uint16_t)((Kp * errLocal + Kd * (errLocal - errPreviousLocal)/0.02) + setPoint)
 
@@ -137,7 +137,7 @@ void __attribute__((__interrupt__, __shadow__, __auto_psv__)) _T1Interrupt(void)
     
     if(InterruptDeadline == 1){  
         deadline++;
-        InterruptDeadline = 0;
+//        InterruptDeadline = 0;
     }
     
     flagTouch =1;   // 100 Hz
@@ -194,6 +194,7 @@ void main_loop()
     servo_initialization(Y);
    __delay_ms(2000);
     
+    int main_Counter = 0;
     
     while(TRUE) {
         
@@ -204,30 +205,36 @@ void main_loop()
         
         
         if(flagTouch == 1){     // 100Hz
-            
+            main_Counter ++;
             InterruptDeadline = 1;
             iInterrupt ++;
             
             switch(dimension) {
-                case 0: changeDimension_touchscreen(X);
+                case 0: 
+                        changeDimension_touchscreen(X); // BZ:19.07: diese Funktion braucht zu viel Zeit führt zu deadline misses!! delay zu viel in der fkt!
                         x_positionPrevious = x_position;
                         x_position = currentBallPosition();
 //                        lcd_locate(0, 3);
 //                        lcd_printf("X gemessen = %3u", x_position);
                         dimension = 1; 
 				break;
-                case 1: changeDimension_touchscreen(Y);
+                case 1: 
+                        changeDimension_touchscreen(Y); // BZ:19.07: diese Funktion braucht zu viel Zeit führt zu deadline misses!! delay zu viel in der fkt!
                         y_positionPrevious = y_position;
                         y_position = currentBallPosition();
 //                        lcd_locate(0, 4);
 //                        lcd_printf("Y gemessen = %3u", y_position);
-                        dimension = 0; 
+                        dimension = 0;
 				break;
                 }
 
             InterruptDeadline = 0;
             flagTouch = 0;
+            
         } 
+        
+        lcd_locate(0, 3);
+        lcd_printf("main_counter = %u", main_Counter);
         
 
         if(flagServo == 1){  //50 Hz
@@ -242,7 +249,7 @@ void main_loop()
 //            lcd_printf("X = %3u", x_positionClean); 
             errXPrevious = errX;
             errX = getErr(setPointX, x_positionClean); 
-//            errX = getErr(500, x_positionClean); 	// setPoint middle X
+//            errX = getErr(450, x_positionClean); 	// setPoint middle X
 //            lcd_locate(0, 6);
 //            lcd_printf("ErrX = %3i", errX);
 //             lcd_locate(0, 6);
@@ -252,14 +259,14 @@ void main_loop()
              
             dutyCycle = dutyCycle(errX, errXPrevious, setPointServoX);   // servo operation                         
 
-            if(dutyCycle <= 3565){    //implement the allowed Range for manipulation of the servo. //2.24
-                dutyCycle = 3565;
-            }else if(dutyCycle >= 3805){   //1.04
-                    dutyCycle = 3805;
+            if(dutyCycle <= 3560){    //implement the allowed Range for manipulation of the servo. //2.24
+                dutyCycle = 3560;
+            }else if(dutyCycle >= 3800){   //1.04
+                    dutyCycle = 3800;
                  }
 
                       
-//            lcd_locate(0, 3);
+//            lcd_locate(0, 4);
 //            lcd_printf("DutyCycle X = %4u", dutyCycle);
             set_dutyCycle(X, dutyCycle);
 		
@@ -271,7 +278,7 @@ void main_loop()
 //            lcd_printf("Y = %3u", y_positionClean);
             errYPrevious = errY;
             errY = getErr(setPointY, y_positionClean); 
-//            errY = getErr(295, y_positionClean); // set Point middle y     	
+//            errY = getErr(350, y_positionClean); // set Point middle y     	
 //            lcd_locate(0, 7);
 //            lcd_printf("ErrY = %3i", errY);
 //            lcd_locate(0, 7);
@@ -281,19 +288,21 @@ void main_loop()
              
             dutyCycle = dutyCycle(errY, errYPrevious, setPointServoY);	 // servo operation
 
-            if(dutyCycle <= 3592){    //implement the allowed Range for manipulation of the servo. //2.04
-                dutyCycle = 3592;
-            }else if(dutyCycle >= 3832){  //0.84
-                dutyCycle = 3832;
+            if(dutyCycle <= 3597){    //implement the allowed Range for manipulation of the servo. //2.04
+                dutyCycle = 3597;
+            }else if(dutyCycle >= 3837){  //0.84
+                dutyCycle = 3837;
             }
 
                        
-//            lcd_locate(0, 4);
+//            lcd_locate(0, 5);
 //            lcd_printf("DutyCycle Y = %4u", dutyCycle);
             set_dutyCycle(Y, dutyCycle);
 
             
+            
             flagServo = 0;
+            
          }
         
     } 
