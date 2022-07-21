@@ -25,18 +25,18 @@
 #define Y 1
 #define x_Axis 0
 #define y_Axis 1
-#define soll 350;
 
-#define getErr(Soll, positionClean) (uint16_t)(positionClean - Soll)
+
+#define getErr(Soll, positionClean) (int16_t)(positionClean - Soll)
 #define getPR3(sampleRate) ((float) 12.8e6 * 1/sampleRate / 256)
 #define getTime(counter) ((float) counter * 10 / 1000)
 #define getOmega(frequency) ((float) 2 * pi * frequency)
 
 
 #define radius 100
-#define speed  1 // Hz
-#define centerX 450
-#define centerY 350
+#define speed  0.2 // Hz
+#define centerX 443
+#define centerY 346
 
 
 /*
@@ -113,8 +113,8 @@ void initialize_timer(){
  * PD Controller
  */
 
-#define Kp 0.095   //0.261     //0.0845
-#define Kd 0.0735   //0.0735
+#define Kp 0.083 //0.088   
+#define Kd 0.061 //0.0735   
 
 //#define setPointServoX 1.64
 //#define setPointServoY 1.44
@@ -141,6 +141,7 @@ void __attribute__((__interrupt__, __shadow__, __auto_psv__)) _T1Interrupt(void)
     }
     
     flagTouch =1;   // 100 Hz
+   
     
     if(iInterrupt == 1){  // 50 Hz
       flagServo = 1; 
@@ -211,17 +212,17 @@ void main_loop()
             
             switch(dimension) {
                 case 0: 
-                        changeDimension_touchscreen(X); // BZ:19.07: diese Funktion braucht zu viel Zeit führt zu deadline misses!! delay zu viel in der fkt!
                         x_positionPrevious = x_position;
-                        x_position = currentBallPosition();
+                        x_position = currentBallPosition(X);
+                        changeDimension_touchscreen(Y); // BZ:19.07: diese Funktion braucht zu viel Zeit führt zu deadline misses!! delay zu viel in der fkt!
 //                        lcd_locate(0, 3);
 //                        lcd_printf("X gemessen = %3u", x_position);
                         dimension = 1; 
 				break;
                 case 1: 
-                        changeDimension_touchscreen(Y); // BZ:19.07: diese Funktion braucht zu viel Zeit führt zu deadline misses!! delay zu viel in der fkt!
                         y_positionPrevious = y_position;
-                        y_position = currentBallPosition();
+                        y_position = currentBallPosition(Y);
+                        changeDimension_touchscreen(X); // BZ:19.07: diese Funktion braucht zu viel Zeit führt zu deadline misses!! delay zu viel in der fkt!
 //                        lcd_locate(0, 4);
 //                        lcd_printf("Y gemessen = %3u", y_position);
                         dimension = 0;
@@ -233,8 +234,8 @@ void main_loop()
             
         } 
         
-        lcd_locate(0, 3);
-        lcd_printf("main_counter = %u", main_Counter);
+//        lcd_locate(0, 3);
+//        lcd_printf("main_counter = %u", main_Counter);
         
 
         if(flagServo == 1){  //50 Hz
@@ -249,7 +250,7 @@ void main_loop()
 //            lcd_printf("X = %3u", x_positionClean); 
             errXPrevious = errX;
             errX = getErr(setPointX, x_positionClean); 
-//            errX = getErr(450, x_positionClean); 	// setPoint middle X
+//            errX = getErr(centerX, x_positionClean); 	// setPoint middle X
 //            lcd_locate(0, 6);
 //            lcd_printf("ErrX = %3i", errX);
 //             lcd_locate(0, 6);
@@ -278,7 +279,7 @@ void main_loop()
 //            lcd_printf("Y = %3u", y_positionClean);
             errYPrevious = errY;
             errY = getErr(setPointY, y_positionClean); 
-//            errY = getErr(350, y_positionClean); // set Point middle y     	
+//            errY = getErr(centerY, y_positionClean); // set Point middle y     	
 //            lcd_locate(0, 7);
 //            lcd_printf("ErrY = %3i", errY);
 //            lcd_locate(0, 7);
