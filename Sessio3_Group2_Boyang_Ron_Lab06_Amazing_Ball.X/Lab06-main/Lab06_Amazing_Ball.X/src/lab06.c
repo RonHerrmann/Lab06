@@ -34,7 +34,7 @@
 
 
 #define radius 100
-#define speed  0.2 // Hz
+#define speed  1 // Hz
 #define centerX 443
 #define centerY 346
 
@@ -113,8 +113,8 @@ void initialize_timer(){
  * PD Controller
  */
 
-#define Kp 0.083 //0.088   
-#define Kd 0.061 //0.0735   
+#define Kp 0.105  //0.083 //0.088   
+#define Kd 0.0735  //0.061 //0.0735   
 
 //#define setPointServoX 1.64
 //#define setPointServoY 1.44
@@ -309,3 +309,4 @@ void main_loop()
     } 
         
 }
+
